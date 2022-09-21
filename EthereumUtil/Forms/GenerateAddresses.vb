@@ -7,17 +7,39 @@ Public Class GenerateAddresses
     Private Async Sub btnStart_Click(sender As Object, e As EventArgs) Handles btnStart.Click
         Dim ecKey As Object
         Dim privateKey As String, publicKey As String
-        Dim cnt As Integer = 1
+        Dim cnt As Integer = 0
         Dim tmp As String = "PrivateKey,Address"
         Dim numKeys As Integer = IIf(txtNum.Text.Length = 0, 1, txtNum.Text)
         Dim blnCont = True
         Dim r As HexTypes.HexBigInteger
         Dim totalKeyGen As Int64
 
+        ''' hackish
+        Dim startsWith = txtStarts.Text
+        Dim endsWith = txtEnds.Text
+
         If showBalance.Checked = True Then
             tmp = tmp & ",Balance" & vbCrLf
         Else
             tmp = tmp & vbCrLf
+        End If
+
+        If startsWith.Length <> 0 Then
+            If IsHex(startsWith) Then
+                blnCont = True
+            Else
+                blnCont = False
+                MessageBox.Show("Please ensure 'start with' inputs are hex characters!")
+            End If
+        End If
+
+        If endsWith.Length <> 0 Then
+            If IsHex(endsWith) Then
+                blnCont = True
+            Else
+                blnCont = False
+                MessageBox.Show("Please ensure 'end with' inputs are hex characters!")
+            End If
         End If
 
         If numKeys > 2000 Then
@@ -36,7 +58,7 @@ Public Class GenerateAddresses
             Label3.Text = "Working..."
             Application.DoEvents()
 
-            While cnt <= numKeys
+            While cnt < numKeys
                 ecKey = Nethereum.Signer.EthECKey.GenerateKey()
                 privateKey = ecKey.GetPrivateKey.ToString.Substring(2)
                 publicKey = ecKey.GetPublicAddress
@@ -46,28 +68,59 @@ Public Class GenerateAddresses
                 Label4.Text = "Searched " & totalKeyGen & " number of keys..."
                 Application.DoEvents()
 
-                If showBalance.Checked = True Then
-                    r = Await CheckBalance(publicKey)
-                    ' just being cheeky
-                    'If r.Value.ToString <> "0" Then 
-                    tmp = tmp + privateKey & "," & publicKey & "," & r.Value.ToString & vbCrLf
+                If startsWith.Length <> 0 Then
+                    'trim
+                    Dim tmpPubK As String = ""
+                    If publicKey.StartsWith("0x") Then
+                        tmpPubK = Mid(publicKey, 3, publicKey.Length - 2)
+                    Else
+                        tmpPubK = publicKey
+                    End If
+
+                    If tmpPubK.ToLower.StartsWith(startsWith) Then
+                        blnCont = True
+                    Else
+                        blnCont = False
+                    End If
+                End If
+                If endsWith.Length <> 0 And blnCont Then
+                    If publicKey.ToLower.EndsWith(endsWith) Then
+                        blnCont = True
+                    Else
+                        blnCont = False
+                    End If
+                End If
+
+                If blnCont Then
+                    If showBalance.Checked = True Then
+                        r = Await CheckBalance(publicKey)
+                        ' just being cheeky
+                        'If r.Value.ToString <> "0" Then 
+                        tmp = tmp + privateKey & "," & publicKey & "," & r.Value.ToString & vbCrLf
                         cnt = cnt + 1
 
                         If (cnt Mod 2) = 0 Then
                             Label3.Text = "Found " & cnt & " out of " & numKeys & StrDup((cnt Mod 3) + 3, ".")
                             Application.DoEvents()
                         End If
-                    'End If
-                Else
-                    tmp = tmp + privateKey & "," & publicKey & vbCrLf
-                    cnt = cnt + 1
+                        'End If
+                    Else
+                        tmp = tmp + privateKey & "," & publicKey & vbCrLf
+                        cnt = cnt + 1
 
-                    If (cnt Mod 100) = 0 Then
-                        Label3.Text = "Found " & cnt & " out of " & numKeys & StrDup((cnt Mod 3) + 3, ".")
-                        Application.DoEvents()
+                        'hack in a backup first
+                        Dim file As System.IO.StreamWriter
+                        file = My.Computer.FileSystem.OpenTextFileWriter("backup.txt", True)
+                        file.WriteLine(privateKey & "," & publicKey)
+                        file.Close()
+
+                        If (cnt Mod 100) = 0 Then
+                            Label3.Text = "Found " & cnt & " out of " & numKeys & StrDup((cnt Mod 3) + 3, ".")
+                            Application.DoEvents()
+                        End If
+
+                        'End If
                     End If
-
-                    'End If
                 End If
             End While
 
@@ -130,4 +183,32 @@ Public Class GenerateAddresses
         Dim digitsOnly As Regex = New Regex("[^\d]")
         txtNum.Text = digitsOnly.Replace(txtNum.Text, "")
     End Sub
+
+    Public Function IsHex(ByVal str As String) As Boolean
+        If String.IsNullOrWhiteSpace(str) Then _
+            Return False
+
+        Dim i As Int32, c As Char
+
+        If str.StartsWith("0x") Then
+            str = Mid(str, 3, str.Length - 2)
+        End If
+
+        If str.IndexOf("0x") = 0 Then _
+            str = str.Substring(2)
+
+        While (i < str.Length)
+            c = str.Chars(i)
+
+            If Not (((c >= "0"c) AndAlso (c <= "9"c)) OrElse
+                    ((c >= "a"c) AndAlso (c <= "f"c)) OrElse
+                    ((c >= "A"c) AndAlso (c <= "F"c))) _
+            Then
+                Return False
+            Else
+                i += 1
+            End If
+        End While
+        Return True
+    End Function
 End Class

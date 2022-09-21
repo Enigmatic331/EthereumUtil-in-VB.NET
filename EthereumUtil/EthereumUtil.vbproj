@@ -111,7 +111,7 @@
       <DependentUpon>DrainBalance.vb</DependentUpon>
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\GenerateAddresses.Designer.vb">
+    <Compile Include="Forms\GenerateAddresses.designer.vb">
       <DependentUpon>GenerateAddresses.vb</DependentUpon>
     </Compile>
     <Compile Include="Forms\GenerateAddresses.vb">
@@ -156,7 +156,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\GenerateAddresses.resx">
       <DependentUpon>GenerateAddresses.vb</DependentUpon>
-      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\PrivateKeyToJSON.resx">
       <DependentUpon>PrivateKeyToJSON.vb</DependentUpon>
